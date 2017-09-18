@@ -24,7 +24,7 @@ Since the healthbar is always located in the same portion of the screen, I cropp
 These videos have movies for the launching of the console, Youtube's channel intro, ingame movies... which are parts that are not relevant to the gameplay, it would be bad to train a model on them or to make predictions on such images. That's what ```clean_movie_images.py``` is for : it reads images through the Keras module, then it identifies which part of the screenshots is always there in the gameplay videos, and absent elsewhere. In this case, this would be the tiny yellow part at the left of the healthbar which can be seen in the picture above. Here's how it works :
 
 - The program imports a batch of 20 images extracted from gameplay parts. It is necessary to import many images, since the values are not strictly equal from one picture to another, because of the quality of the video encoding and the screenshots.
-- Since an image can be seen as a 3D matrix (length, width, 3 color components), for the tiny yellow part that we want to analyze, the mean of each pixel for each color component is computed. The mean is computed for each image and we get 3 lists of means (one for each color component). Then we define upper and lower boundaries : 
+- Since an image can be seen as a 3D matrix (length, width, 3 color components), for the tiny yellow part that we want to analyze, the mean over all studied pixels for each color component is computed. The mean is computed for each image and we get 3 lists of means (one for each color component). Then we define upper and lower boundaries : 
 
 ```python
 lower = 2*min(list_means) - max(list_means)
