@@ -32,6 +32,19 @@ upper = 2*max(list_means) - min(list_means)
 ```
 For an image to be classified as ingame screenshot (and not movie screenshot), the mean for each color component in the specified area will have to fall between those boundaries. Otherwise, the image is deleted from the folder.
 
+The goal will be to classify images in 4 categories, depending on how much health is left :
+- 0 to 25%
+- 26 to 50%
+- 51 to 75%
+- 76 to 100%
+
 ## Building a neural network
 
-Convolutional neural networks are one of the most efficients techniques to detect features in images, so I chose to build one to solve this problem. To do so, I worked with the library Keras, using a TensorFlow backend. 
+Convolutional neural networks are one of the most efficients techniques to detect features in images, so I chose to build one to solve this problem. To do so, I worked with the library Keras, using a TensorFlow backend. I created 2 convolutional layers, and 1 fully connected layer with 128 nodes. The activation function for each layer is the rectified linear unit (ReLU), and the final activation function is softmax. To improve the quality of the model, additional images are artificially created by the Keras function ```ImageDataGenerator``` which clones existing images and modify them slightly. After the model is fitted to the training set, the program predicts classes for a test set and gives the percentage of good prediction for each class, here's what we get :
+
+- 0 to 25% -> 85%
+- 26 to 50% -> 91.9%
+- 51 to 75% -> 68.2%
+- 76 to 100% -> 99.4%
+
+Since there is some class imbalance problem (149, 376, 467, 503 pictures for classes 0, 1, 2, 3 in the training set), because the player uses healing items when he's close to death so it doesn't spend a lot of time with a lot health bar, I expected that it would cause trouble for the predictions in the first class, but it's doing fairly well. Surprisingly, the 3rd class has a low good classification rate, despite a high number of samples. Hypothesis : images from the 3rd class are sometimes a few pixels away from falling into another class, which could make it harder to detect. Next step would be to solve this problem by changing hyperparameters through a grid search.
