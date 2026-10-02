@@ -48,3 +48,10 @@ Convolutional neural networks are one of the most efficients techniques to detec
 - 76 to 100% -> 99.4%
 
 Since there is some class imbalance problem (149, 376, 467, 503 pictures for classes 0, 1, 2, 3 in the training set), because the player uses healing items when he's close to death so it doesn't spend a lot of time with a low health bar, I expected that it would cause trouble for the predictions in the first class, but it's doing fairly well. Surprisingly, the 3rd class has a low good classification rate, despite a high number of samples. Hypothesis : images from the 3rd class are sometimes a few pixels away from falling into another class, which could make it harder to detect. Next step would be to solve this problem by changing hyperparameters through a grid search.
+
+**Update :** the figures above are not reliable, they come from a version of `cnn_ninja_gaiden2.py` with three bugs, which have since been fixed :
+- `target_size = (100, 15)` is (height, width) in Keras, so the 1000x25 healthbar was squashed to 15 pixels wide : the 25/50/75% thresholds were only a few pixels apart. Images are now resized to 25x200.
+- The data augmentation used `horizontal_flip`, `zoom_range` and `shear_range`, which change the direction or the apparent length of the bar (so the health percentage) without changing the label. It has been removed.
+- The predictions on the validation set were made on raw 0-255 pixels, while the model was trained on pixels rescaled to 0-1. They are now rescaled the same way.
+
+The script now also prints a confusion matrix. The model has to be trained again to get updated figures.

@@ -11,8 +11,12 @@ import os
 # Création du réseau de neurones convolutionel
 classifier = Sequential()
 
+# Les images font 1000x25 (largeur x hauteur). Keras attend (hauteur, largeur) :
+# on garde la barre horizontale avec assez de colonnes pour distinguer les seuils 25/50/75%
+img_size = (25, 200)
+
 # Etape 1 - Convolution
-classifier.add(Convolution2D(8, 3, 3, input_shape = (100, 15, 3), activation = 'relu'))
+classifier.add(Convolution2D(8, 3, 3, input_shape = img_size + (3,), activation = 'relu'))
 
 # Etape 2 - Pooling
 classifier.add(MaxPooling2D(pool_size = (2, 2)))
@@ -31,10 +35,9 @@ classifier.add(Dense(output_dim = 4, activation = 'softmax'))
 # Compilation
 classifier.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics = ['accuracy'])
 
-train_datagen = ImageDataGenerator(rescale = 1./255,
-                                   shear_range = 0.2,
-                                   zoom_range = 0.2,
-                                   horizontal_flip = True)
+# Pas de flip, zoom ni shear : ils changent le sens ou la longueur apparente
+# de la barre, donc le pourcentage de vie, sans changer l'étiquette
+train_datagen = ImageDataGenerator(rescale = 1./255)
 
 test_datagen = ImageDataGenerator(rescale = 1./255)
 
@@ -44,12 +47,12 @@ valid_dir = '/home/julien/data_science/ng2/valid_set'
 
 
 training_set = train_datagen.flow_from_directory(train_dir,
-                                                 target_size = (100, 15),
+                                                 target_size = img_size,
                                                  batch_size = 8,
                                                  class_mode = 'sparse')
 
 test_set = test_datagen.flow_from_directory(test_dir,
-                                            target_size = (100, 15),
+                                            target_size = img_size,
                                             batch_size = 8,
                                             class_mode = 'sparse')
 
@@ -57,64 +60,27 @@ classifier.fit_generator(training_set,
                          samples_per_epoch = 170,
                          nb_epoch = 100,
                          validation_data = test_set,
-                         nb_val_samples = 10)
+                         nb_val_samples = len(test_set.filenames))
 
 #classifier.save('model_ng2.h5')
 
-list_0_to_25 = sorted(os.listdir(valid_dir+"/0_to_25"))
-list_26_to_50 = sorted(os.listdir(valid_dir+"/26_to_50"))
-list_51_to_75 = sorted(os.listdir(valid_dir+"/51_to_75"))
-list_76_to_100 = sorted(os.listdir(valid_dir+"/76_to_100"))
+# Evaluation sur le valid set, avec le même prétraitement qu'à l'entraînement (rescale 1/255)
+classes = sorted(training_set.class_indices, key = training_set.class_indices.get)
+confusion = np.zeros((len(classes), len(classes)), dtype = int)
 
-training_set.class_indices
-good_predictions = []
+for true_class in classes:
+    for elt in sorted(os.listdir(valid_dir+"/"+true_class)):
+        test_image = image_utils.load_img(valid_dir+"/"+true_class+"/"+elt, target_size = img_size)
+        test_image = image_utils.img_to_array(test_image) / 255.
+        test_image = np.expand_dims(test_image, axis = 0)
+        result = classifier.predict_on_batch(test_image)
+        confusion[training_set.class_indices[true_class], np.argmax(result)] += 1
 
-predictions_0_to_25 = []
-for elt in list_0_to_25: 
-    test_image = image_utils.load_img(valid_dir+"/0_to_25/"+elt, target_size=(100, 15))
-    test_image = image_utils.img_to_array(test_image)
-    test_image = np.expand_dims(test_image, axis=0)
-    result = classifier.predict_on_batch(test_image)
-    predictions_0_to_25.append(result)
+good_predictions = confusion.diagonal() / confusion.sum(axis = 1)
 
-predictions_0_to_25 = np.array(predictions_0_to_25).reshape((len(predictions_0_to_25),4))  
-predictions_0_to_25 = np.argmax(predictions_0_to_25, axis=1)
-good_predictions.append(len(predictions_0_to_25[predictions_0_to_25 == 0])/len(list_0_to_25))
+for name, rate in zip(classes, good_predictions):
+    print(name, rate)
 
-predictions_26_to_50 = []
-for elt in list_26_to_50: 
-    test_image = image_utils.load_img(valid_dir+"/26_to_50/"+elt, target_size=(100, 15))
-    test_image = image_utils.img_to_array(test_image)
-    test_image = np.expand_dims(test_image, axis=0)
-    result = classifier.predict_on_batch(test_image)
-    predictions_26_to_50.append(result)
-
-predictions_26_to_50 = np.array(predictions_26_to_50).reshape((len(predictions_26_to_50),4))  
-predictions_26_to_50 = np.argmax(predictions_26_to_50, axis=1)
-good_predictions.append(len(predictions_26_to_50[predictions_26_to_50 == 1])/len(list_26_to_50))
-
-predictions_51_to_75 = []
-for elt in list_51_to_75: 
-    test_image = image_utils.load_img(valid_dir+"/51_to_75/"+elt, target_size=(100, 15))
-    test_image = image_utils.img_to_array(test_image)
-    test_image = np.expand_dims(test_image, axis=0)
-    result = classifier.predict_on_batch(test_image)
-    predictions_51_to_75.append(result)
-
-predictions_51_to_75 = np.array(predictions_51_to_75).reshape((len(predictions_51_to_75),4))  
-predictions_51_to_75 = np.argmax(predictions_51_to_75, axis=1)
-good_predictions.append(len(predictions_51_to_75[predictions_51_to_75 == 2])/len(list_51_to_75))
-
-predictions_76_to_100 = []
-for elt in list_76_to_100: 
-    test_image = image_utils.load_img(valid_dir+"/76_to_100/"+elt, target_size=(100, 15))
-    test_image = image_utils.img_to_array(test_image)
-    test_image = np.expand_dims(test_image, axis=0)
-    result = classifier.predict_on_batch(test_image)
-    predictions_76_to_100.append(result)
-
-predictions_76_to_100 = np.array(predictions_76_to_100).reshape((len(predictions_76_to_100),4))  
-predictions_76_to_100 = np.argmax(predictions_76_to_100, axis=1)
-good_predictions.append(len(predictions_76_to_100[predictions_76_to_100 == 3])/len(list_76_to_100))
-
-print(good_predictions)
+# Lignes : vraie classe, colonnes : classe prédite
+print(classes)
+print(confusion)
